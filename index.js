@@ -13,7 +13,7 @@ app.use(express.json());
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.rk7zy.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
 
-console.log(process.env.USER_NAME);
+// console.log(process.env.USER_NAME);
 
 async function run(){
     try{
@@ -24,21 +24,35 @@ async function run(){
         const reviewsCollection = client.db("gearBikes").collection("reviews");
 
         //get all products
-        app.get('/products',(req,res)=>{
-            const products = gearBikesCollection.find().toArray();
+        app.get('/products',async(req,res)=>{
+            const products = await gearBikesCollection.find().toArray();
             res.send(products)
         })
-    }
-    finally{
+
+        //add user
+        app.put('/user',async(req,res)=>{
+            const email = req.body.email;
+            const name = req.body.name;
+            const options = { upsert: true };
+            const filter = {email}
+            const doc = {
+                $set:{
+                    email, name
+                }
+            }
+            const result = await usersCollection.updateOne(filter, doc, options);
+            res.send(result);
+        })
+    }finally{
     }
 }
 
-run().catch().dir
+run().catch(console.dir());
 
 app.get('/',(req,res)=>{
     res.send("Welcome to GearBikes");
 })
 
 app.listen(port,()=>{
-    console.log("Port"+port+" is running");
+    console.log("Port: "+port+" is running");
 })
