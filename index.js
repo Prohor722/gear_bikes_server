@@ -29,6 +29,12 @@ async function run(){
             res.send(products);
         })
 
+        //get all products
+        app.get('/products',async(req,res)=>{
+            const products = await productsCollection.find().toArray();
+            res.send(products);
+        })
+
         //get latest home page reviews
         app.get('/latestReviews',async(req,res)=>{
             const reviews = await reviewsCollection.find().sort({_id:-1}).limit(6).toArray();
