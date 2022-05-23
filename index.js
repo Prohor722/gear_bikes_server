@@ -23,11 +23,13 @@ async function run(){
         const usersCollection = client.db("gearBikes").collection("users");
         const reviewsCollection = client.db("gearBikes").collection("reviews");
 
-        //get all products
+        //get home page products products
         app.get('/products',async(req,res)=>{
-            const products = await gearBikesCollection.find().toArray();
+            const products = await gearBikesCollection.find().sort({_id:-1}).limit(6).toArray();
             res.send(products)
         })
+
+
 
         //add user
         app.put('/user',async(req,res)=>{
