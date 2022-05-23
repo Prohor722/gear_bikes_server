@@ -19,14 +19,20 @@ async function run(){
     try{
         await client.connect();
 
-        const gearBikesCollection = client.db("gearBikes").collection("products");
+        const productsCollection = client.db("gearBikes").collection("products");
         const usersCollection = client.db("gearBikes").collection("users");
         const reviewsCollection = client.db("gearBikes").collection("reviews");
 
-        //get home page products products
-        app.get('/products',async(req,res)=>{
-            const products = await gearBikesCollection.find().sort({_id:-1}).limit(6).toArray();
-            res.send(products)
+        //get latest home page products
+        app.get('/latestProducts',async(req,res)=>{
+            const products = await productsCollection.find().sort({_id:-1}).limit(6).toArray();
+            res.send(products);
+        })
+
+        //get latest home page reviews
+        app.get('/latestReviews',async(req,res)=>{
+            const reviews = await reviewsCollection.find().sort({_id:-1}).limit(6).toArray();
+            res.send(reviews);
         })
 
 
