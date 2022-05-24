@@ -2,6 +2,7 @@ const express = require('express');
 const cors = require('cors');
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const jwt = require('jsonwebtoken');
 const app =express();
 const port = process.env.PORT || 5000;
 
@@ -9,6 +10,22 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+function verifyJWT(req,res,next){
+    const authHeader = req.headers.authorization;
+    if(!authorization){
+        res.status(401).send({message: "Unauthorized Access."})
+    }
+    const token = authHeader.split(" ")[1];
+
+    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function( err, decoded){
+        if(err){
+            return status.status(403).send({message: "Forbidden Access."})
+        }
+        req.decoded = decoded;
+        next();
+    })
+
+}
 
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.rk7zy.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
@@ -22,6 +39,7 @@ async function run(){
         const productsCollection = client.db("gearBikes").collection("products");
         const usersCollection = client.db("gearBikes").collection("users");
         const reviewsCollection = client.db("gearBikes").collection("reviews");
+        const orderCollection = client.db("gearBikes").collection("orders");
 
         //get latest home page products
         app.get('/latestProducts',async(req,res)=>{
@@ -68,9 +86,7 @@ async function run(){
             res.send(reviews);
         })
 
-
-
-        //add user
+        //add user and send token
         app.put('/user',async(req,res)=>{
             const email = req.body.email;
             const name = req.body.name;
@@ -82,8 +98,19 @@ async function run(){
                 }
             }
             const result = await usersCollection.updateOne(filter, doc, options);
+            const token = jwt.sign({email}, process.env.ACCESS_TOKEN_SECRET, {
+                expiresIn: "3h"
+            });
+            res.send({result,token});
+        })
+
+        //add order
+        app.post('/addOrder', async(req,res)=>{
+            const order = req.body;
+            const result = await orderCollection.insertOne(order);
             res.send(result);
         })
+
     }finally{
     }
 }
