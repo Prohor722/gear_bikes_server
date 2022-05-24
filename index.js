@@ -1,162 +1,188 @@
-const express = require('express');
-const cors = require('cors');
+const express = require("express");
+const cors = require("cors");
 require("dotenv").config();
-const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
-const jwt = require('jsonwebtoken');
-const app =express();
+const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const jwt = require("jsonwebtoken");
+const app = express();
 const port = process.env.PORT || 5000;
 
 //middleware
 app.use(cors());
 app.use(express.json());
 
-function verifyJWT(req,res,next){
-    const authHeader = req.headers.authorization;
-    if(!authorization){
-        res.status(401).send({message: "Unauthorized Access."})
+function verifyJWT(req, res, next) {
+  const authHeader = req.headers.authorization;
+  if (!authorization) {
+    res.status(401).send({ message: "Unauthorized Access." });
+  }
+  const token = authHeader.split(" ")[1];
+
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+      return status.status(403).send({ message: "Forbidden Access." });
     }
-    const token = authHeader.split(" ")[1];
-
-    jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function( err, decoded){
-        if(err){
-            return status.status(403).send({message: "Forbidden Access."})
-        }
-        req.decoded = decoded;
-        next();
-    })
-
+    req.decoded = decoded;
+    next();
+  });
 }
 
 const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.rk7zy.mongodb.net/?retryWrites=true&w=majority`;
-const client = new MongoClient(uri, { useNewUrlParser: true, useUnifiedTopology: true, serverApi: ServerApiVersion.v1 });
+const client = new MongoClient(uri, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  serverApi: ServerApiVersion.v1,
+});
 
 // console.log(process.env.USER_NAME);
 
-async function run(){
-    try{
-        await client.connect();
+async function run() {
+  try {
+    await client.connect();
 
-        const productsCollection = client.db("gearBikes").collection("products");
-        const usersCollection = client.db("gearBikes").collection("users");
-        const reviewsCollection = client.db("gearBikes").collection("reviews");
-        const orderCollection = client.db("gearBikes").collection("orders");
+    const productsCollection = client.db("gearBikes").collection("products");
+    const usersCollection = client.db("gearBikes").collection("users");
+    const reviewsCollection = client.db("gearBikes").collection("reviews");
+    const orderCollection = client.db("gearBikes").collection("orders");
 
-        //get latest home page products
-        app.get('/latestProducts',async(req,res)=>{
-            const products = await productsCollection.find().sort({_id:-1}).limit(6).toArray();
-            res.send(products);
-        })
+    //get latest home page products
+    app.get("/latestProducts", async (req, res) => {
+      const products = await productsCollection
+        .find()
+        .sort({ _id: -1 })
+        .limit(6)
+        .toArray();
+      res.send(products);
+    });
 
-        //get all products
-        app.get('/products',async(req,res)=>{
-            const search = req.query.search;
-            // const query = {name:search};
-            console.log(search);
-            let products
-            if(search){
-                // const query={name:search};
-                const query = { name: { $regex: search } };
-                
-                products = await productsCollection.find(query).toArray();
-            }
-            else{
-                products = await productsCollection.find().toArray();
-            }
-            res.send(products);
-        })
+    //get all products
+    app.get("/products", async (req, res) => {
+      const search = req.query.search;
+      // const query = {name:search};
+    //   console.log(search);
+      let products;
+      if (search) {
+        // const query={name:search};
+        const query = { name: { $regex: search } };
 
-        //get single products
-        app.get('/product/:id',async(req,res)=>{
-            const id = req.params.id;
-            console.log(id)
-            const query = {_id:ObjectId(id)};
-            products = await productsCollection.findOne(query);
-            res.send(products);
-        })
+        products = await productsCollection.find(query).toArray();
+      } else {
+        products = await productsCollection.find().toArray();
+      }
+      res.send(products);
+    });
 
-        //get latest home page reviews
-        app.get('/latestReviews',async(req,res)=>{
-            const reviews = await reviewsCollection.find().sort({_id:-1}).limit(6).toArray();
-            res.send(reviews);
-        })
+    //get single products
+    app.get("/product/:id", async (req, res) => {
+      const id = req.params.id;
+    //   console.log(id);
+      const query = { _id: ObjectId(id) };
+      products = await productsCollection.findOne(query);
+      res.send(products);
+    });
 
-        //get all reviews
-        app.get('/reviews',async(req,res)=>{
-            const reviews = await reviewsCollection.find().toArray();
-            res.send(reviews);
-        })
+    //get latest home page reviews
+    app.get("/latestReviews", async (req, res) => {
+      const reviews = await reviewsCollection
+        .find()
+        .sort({ _id: -1 })
+        .limit(6)
+        .toArray();
+      res.send(reviews);
+    });
 
-        //add user and send token
-        app.put('/user',async(req,res)=>{
-            const email = req.body.email;
-            const name = req.body.name;
-            const options = { upsert: true };
-            const filter = {email}
-            const doc = {
-                $set:{
-                    email, name
-                }
-            }
-            const result = await usersCollection.updateOne(filter, doc, options);
-            const token = jwt.sign({email}, process.env.ACCESS_TOKEN_SECRET, {
-                expiresIn: "3h"
-            });
-            res.send({result,token});
-        })
+    //get all reviews
+    app.get("/reviews", async (req, res) => {
+      const reviews = await reviewsCollection.find().toArray();
+      res.send(reviews);
+    });
 
-        //get user data
-        app.get('/user/:email', async(req,res)=>{
-            const email = req.params.email;
-            const token = req.headers.authorization;
-            console.log(token);
-            const query = {email};
-            const result = await usersCollection.findOne(query);
-            res.send(result);
-        })
+    //add user and send token
+    app.put("/user", async (req, res) => {
+      const email = req.body.email;
+      const name = req.body.name;
+      const options = { upsert: true };
+      const filter = { email };
+      const doc = {
+        $set: {
+          email,
+          name,
+        },
+      };
+      const result = await usersCollection.updateOne(filter, doc, options);
+      const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+        expiresIn: "3h",
+      });
+      res.send({ result, token });
+    });
 
-        //add order
-        app.post('/addOrder', async(req,res)=>{
-            const order = req.body;
-            const result = await orderCollection.insertOne(order);
-            res.send(result);
-        })
+    //get user data
+    app.get("/user/:email", async (req, res) => {
+      const email = req.params.email;
+      const token = req.headers.authorization;
+      // console.log(token);
+      const query = { email };
+      const result = await usersCollection.findOne(query);
+      res.send(result);
+    });
 
-        //get orders for user
-        app.get('/orders/:email',async(req,res)=>{
-            const email = req.params.email;
-            const query = { email };
-            const orders = await orderCollection.find(query).toArray();
-            res.send(orders);
-        });
+    //update user
+    app.put("/updateUser", async (req, res) => {
+      const user = req.body;
+      const id = user.id;
+      const filter = { _id: ObjectId(id) };
 
-        //add review
-        app.post('/addReview',async(req,res)=>{
-            const review = req.body;
-            const token = req.headers.authorization;
-            console.log(token);
-            const user = await usersCollection.findOne({email:review.email});
+      const options = { upsert: true };
 
-            const userReview = {
-                name: review.name,
-                email: review.email,
-                img: user.img,
-                review: review.post,
-                rate: review.rate
-            }
-            const result = await reviewsCollection.insertOne(userReview);
-            res.send(result)
-        })
+      const updateDoc = {
+        $set: user,
+      };
 
-    }finally{
-    }
+      const result = await usersCollection.updateOne(filter, updateDoc, options);
+      res.send(result);
+    });
+
+    //add order
+    app.post("/addOrder", async (req, res) => {
+      const order = req.body;
+      const result = await orderCollection.insertOne(order);
+      res.send(result);
+    });
+
+    //get orders for user
+    app.get("/orders/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { email };
+      const orders = await orderCollection.find(query).toArray();
+      res.send(orders);
+    });
+
+    //add review
+    app.post("/addReview", async (req, res) => {
+      const review = req.body;
+      const token = req.headers.authorization;
+    //   console.log(token);
+      const user = await usersCollection.findOne({ email: review.email });
+
+      const userReview = {
+        name: review.name,
+        email: review.email,
+        img: user.img,
+        review: review.post,
+        rate: review.rate,
+      };
+      const result = await reviewsCollection.insertOne(userReview);
+      res.send(result);
+    });
+  } finally {
+  }
 }
 
 run().catch(console.dir());
 
-app.get('/',(req,res)=>{
-    res.send("Welcome to GearBikes");
-})
+app.get("/", (req, res) => {
+  res.send("Welcome to GearBikes");
+});
 
-app.listen(port,()=>{
-    console.log("Port: "+port+" is running");
-})
+app.listen(port, () => {
+  console.log("Port: " + port + " is running");
+});
