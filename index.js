@@ -104,6 +104,16 @@ async function run(){
             res.send({result,token});
         })
 
+        //get user data
+        app.get('/user/:email', async(req,res)=>{
+            const email = req.params.email;
+            const token = req.headers.authorization;
+            console.log(token);
+            const query = {email};
+            const result = await usersCollection.findOne(query);
+            res.send(result);
+        })
+
         //add order
         app.post('/addOrder', async(req,res)=>{
             const order = req.body;
@@ -111,7 +121,7 @@ async function run(){
             res.send(result);
         })
 
-        //get order for user
+        //get orders for user
         app.get('/orders/:email',async(req,res)=>{
             const email = req.params.email;
             const query = { email };
