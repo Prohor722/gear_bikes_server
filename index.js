@@ -117,6 +117,24 @@ async function run(){
             const query = { email };
             const orders = await orderCollection.find(query).toArray();
             res.send(orders);
+        });
+
+        //add review
+        app.post('/addReview',async(req,res)=>{
+            const review = req.body;
+            const token = req.headers.authorization;
+            console.log(token);
+            const user = await usersCollection.findOne({email:review.email});
+
+            const userReview = {
+                name: review.name,
+                email: review.email,
+                img: user.img,
+                review: review.post,
+                rate: review.rate
+            }
+            const result = await reviewsCollection.insertOne(userReview);
+            res.send(result)
         })
 
     }finally{
