@@ -111,6 +111,14 @@ async function run(){
             res.send(result);
         })
 
+        //get order for user
+        app.get('/orders/:email',async(req,res)=>{
+            const email = req.params.email;
+            const query = { email };
+            const orders = await orderCollection.find(query).toArray();
+            res.send(orders);
+        })
+
     }finally{
     }
 }
