@@ -12,14 +12,16 @@ app.use(express.json());
 
 function verifyJWT(req, res, next) {
   const authHeader = req.headers.authorization;
-  if (!authorization) {
+//   console.log("auth: ",authHeader);
+  if (!authHeader) {
     res.status(401).send({ message: "Unauthorized Access." });
   }
   const token = authHeader.split(" ")[1];
+//   console.log(token);
 
   jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
     if (err) {
-      return status.status(403).send({ message: "Forbidden Access." });
+      return res.status(403).send({ message: "Forbidden Access." });
     }
     req.decoded = decoded;
     next();
@@ -73,11 +75,8 @@ async function run() {
     //get all products
     app.get("/products", async (req, res) => {
       const search = req.query.search;
-      // const query = {name:search};
-    //   console.log(search);
       let products;
       if (search) {
-        // const query={name:search};
         const query = { name: { $regex: search } };
 
         products = await productsCollection.find(query).toArray();
@@ -88,21 +87,21 @@ async function run() {
     });
 
     //get single products
-    app.get("/product/:id", async (req, res) => {
+    app.get("/product/:id",verifyJWT, async (req, res) => {
       const id = req.params.id;
-    //   console.log(id);
       const query = { _id: ObjectId(id) };
       products = await productsCollection.findOne(query);
       res.send(products);
     });
 
     //add product
-    app.post('/addProduct',async(req,res)=>{
+    app.post('/addProduct',verifyJWT,verifyAdmin, async(req,res)=>{
         const product = req.body;
+        const token = req.headers.authorization;
+        console.log(token);
         const result = await productsCollection.insertOne(product);
-        console.log(result)
         res.send(result);
-    })
+    });
 
     //get latest home page reviews
     app.get("/latestReviews", async (req, res) => {
@@ -120,16 +119,23 @@ async function run() {
       res.send(reviews);
     });
 
+    //get review user info api
+    app.get('/reviewUserInfo/:email',async(req,res)=>{
+        const email = req.params.email;
+        const user = await usersCollection.findOne({email});
+        res.send({name: user?.name, img: user?.img});
+    });
+
     //add user and send token
     app.put("/user", async (req, res) => {
-        console.log(req.body)
+        // console.log(req.body)
       const email = req.body.email;
       const name = req.body.name;
       const options = { upsert: true };
       const filter = { email };
       const userExists = await usersCollection.findOne(filter);
       if(userExists){
-          console.log(userExists)
+        //   console.log(userExists)
         const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: "3h",
           });
@@ -143,7 +149,7 @@ async function run() {
               img: 'https://i.ibb.co/Jc24hcy/f5qjkr3l.png',
             },
           };
-          console.log(doc);
+        //   console.log(doc);
           const result = await usersCollection.updateOne(filter, doc, options);
           const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
             expiresIn: "3h",
@@ -154,7 +160,7 @@ async function run() {
     });
 
     //get user data
-    app.get("/user/:email", async (req, res) => {
+    app.get("/user/:email",verifyJWT, async (req, res) => {
       const email = req.params.email;
       const token = req.headers.authorization;
       // console.log(token);
@@ -164,7 +170,7 @@ async function run() {
     });
 
     //update user
-    app.put("/updateUser", async (req, res) => {
+    app.put("/updateUser",verifyJWT, async (req, res) => {
       const user = req.body;
       const id = user.id;
       const filter = { _id: ObjectId(id) };
@@ -180,32 +186,40 @@ async function run() {
     });
 
     //get all users for admin
-    app.get("/users", async(req, res) => {
+    app.get("/users",verifyJWT,verifyAdmin, async(req, res) => {
         const users = await usersCollection.find().toArray();
         res.send(users);
       });
 
     //add order
-    app.post("/addOrder", async (req, res) => {
+    app.post("/addOrder",verifyJWT, async (req, res) => {
       const order = req.body;
-      console.log(order);
+    //   console.log(order);
       const result = await orderCollection.insertOne(order);
       res.send(result);
     });
 
     //get orders for user
-    app.get("/orders/:email", async (req, res) => {
+    app.get("/orders/:email",verifyJWT, async (req, res) => {
       const email = req.params.email;
       const query = { email };
       const orders = await orderCollection.find(query).toArray();
       res.send(orders);
     });
 
+    //delete order
+    app.delete('/order/:id',verifyJWT, async(req,res)=>{
+        const id = req.params.id;
+        const query = {_id: ObjectId(id)};
+        const result = await orderCollection.deleteOne(query);
+        res.send(result);
+    });
+
     //get all orders for admin
-    app.get("/orders/sortBy/:status", async(req, res) => {
+    app.get("/orders/sortBy/:status",verifyJWT, verifyAdmin, async(req, res) => {
       const status = req.params.status;
       let query;
-      console.log("status: ",status)
+    //   console.log("status: ",status)
       if(status==='all'){
           query= {};
         }
@@ -217,16 +231,10 @@ async function run() {
     });
 
     //add review
-    app.post("/addReview", async (req, res) => {
+    app.post("/addReview",verifyJWT, async (req, res) => {
       const review = req.body;
-      const token = req.headers.authorization;
-    //   console.log(token);
-      const user = await usersCollection.findOne({ email: review.email });
-
       const userReview = {
-        name: review.name,
         email: review.email,
-        img: user.img,
         review: review.post,
         rate: review.rate,
       };
@@ -235,7 +243,7 @@ async function run() {
     });
 
     //make admin api
-    app.put('/makeAdmin/:id', async(req,res)=>{
+    app.put('/makeAdmin/:id',verifyJWT,verifyAdmin, async(req,res)=>{
         const id = req.params.id;
         const query = {_id: ObjectId(id)};
         const doc = {
@@ -245,7 +253,16 @@ async function run() {
         }
         const result = await usersCollection.updateOne(query, doc);
         res.send(result);
-    })
+    });
+
+    //admin check for user
+    app.get('/adminCheck/:email',verifyJWT,async(req,res)=>{
+        const email = req.params.email;
+        const user = await usersCollection.findOne({email});
+        const isAdmin = user?.role === 'admin';
+        // console.log(isAdmin)
+        res.send({ admin: isAdmin })
+    });
   } finally {
   }
 }
