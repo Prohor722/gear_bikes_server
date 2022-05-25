@@ -44,6 +44,22 @@ async function run() {
     const reviewsCollection = client.db("gearBikes").collection("reviews");
     const orderCollection = client.db("gearBikes").collection("orders");
 
+
+    //verify admin
+    const verifyAdmin = async (req,res,next)=>{
+        const requester = req.decoded.email;
+        const requesterAcc = await usersCollection.findOne({
+            email: requester,
+        });
+        if(requesterAcc.role === 'admin'){
+            next();
+        }
+        else{
+            res.status(403).send({message: "You do not have permission."})
+        }
+    };
+
+
     //get latest home page products
     app.get("/latestProducts", async (req, res) => {
       const products = await productsCollection
@@ -79,6 +95,14 @@ async function run() {
       products = await productsCollection.findOne(query);
       res.send(products);
     });
+
+    //add product
+    app.post('/addProduct',async(req,res)=>{
+        const product = req.body;
+        const result = await productsCollection.insertOne(product);
+        console.log(result)
+        res.send(result);
+    })
 
     //get latest home page reviews
     app.get("/latestReviews", async (req, res) => {
@@ -178,8 +202,17 @@ async function run() {
     });
 
     //get all orders for admin
-    app.get("/orders", async(req, res) => {
-      const orders = await orderCollection.find().toArray();
+    app.get("/orders/sortBy/:status", async(req, res) => {
+      const status = req.params.status;
+      let query;
+      console.log("status: ",status)
+      if(status==='all'){
+          query= {};
+        }
+        else{
+          query = {status: status};
+      }
+      const orders = await orderCollection.find(query).toArray();
       res.send(orders);
     });
 
