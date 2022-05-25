@@ -98,21 +98,35 @@ async function run() {
 
     //add user and send token
     app.put("/user", async (req, res) => {
+        console.log(req.body)
       const email = req.body.email;
       const name = req.body.name;
       const options = { upsert: true };
       const filter = { email };
-      const doc = {
-        $set: {
-          email,
-          name,
-        },
-      };
-      const result = await usersCollection.updateOne(filter, doc, options);
-      const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
-        expiresIn: "3h",
-      });
-      res.send({ result, token });
+      const userExists = await usersCollection.findOne(filter);
+      if(userExists){
+          console.log(userExists)
+        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+            expiresIn: "3h",
+          });
+          res.send({ token });
+      }
+      else{
+          const doc = {
+            $set: {
+              email,
+              name,
+              img: 'https://i.ibb.co/Jc24hcy/f5qjkr3l.png',
+            },
+          };
+          console.log(doc);
+          const result = await usersCollection.updateOne(filter, doc, options);
+          const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+            expiresIn: "3h",
+          });
+          res.send({ result, token });
+      }
+
     });
 
     //get user data
@@ -141,9 +155,16 @@ async function run() {
       res.send(result);
     });
 
+    //get all users for admin
+    app.get("/users", async(req, res) => {
+        const users = await usersCollection.find().toArray();
+        res.send(users);
+      });
+
     //add order
     app.post("/addOrder", async (req, res) => {
       const order = req.body;
+      console.log(order);
       const result = await orderCollection.insertOne(order);
       res.send(result);
     });
@@ -153,6 +174,12 @@ async function run() {
       const email = req.params.email;
       const query = { email };
       const orders = await orderCollection.find(query).toArray();
+      res.send(orders);
+    });
+
+    //get all orders for admin
+    app.get("/orders", async(req, res) => {
+      const orders = await orderCollection.find().toArray();
       res.send(orders);
     });
 
