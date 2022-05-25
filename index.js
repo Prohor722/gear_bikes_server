@@ -200,6 +200,19 @@ async function run() {
       const result = await reviewsCollection.insertOne(userReview);
       res.send(result);
     });
+
+    //make admin api
+    app.put('/makeAdmin/:id', async(req,res)=>{
+        const id = req.params.id;
+        const query = {_id: ObjectId(id)};
+        const doc = {
+            $set:{
+                role: 'admin'
+            }
+        }
+        const result = await usersCollection.updateOne(query, doc);
+        res.send(result);
+    })
   } finally {
   }
 }
