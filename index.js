@@ -61,7 +61,7 @@ async function run() {
     };
 
     //payment intent
-    app.post('/create-payment-intent',async(req,res)=>{
+    app.post('/create-payment-intent',verifyJWT,async(req,res)=>{
         const {price} = req.body;
         const amount = price*100;
         const paymentIntent = await stripe.paymentIntents.create({
@@ -73,7 +73,7 @@ async function run() {
     });
 
     //get latest home page products
-    app.get("/latestProducts", async (req, res) => {
+    app.get("/latestProducts", async(req, res) => {
       const products = await productsCollection
         .find()
         .sort({ _id: -1 })
@@ -111,6 +111,15 @@ async function run() {
         const result = await productsCollection.insertOne(product);
         res.send(result);
     });
+
+    //delete a product 
+    app.delete('/product/:id',async(req,res)=>{
+        const id = req.params.id;
+        console.log(id);
+        const query = {_id: ObjectId(id)};
+        const result = await productsCollection.deleteOne(query);
+        res.send(result);
+    })
 
     //get latest home page reviews
     app.get("/latestReviews", async (req, res) => {
@@ -232,7 +241,7 @@ async function run() {
     });
 
     //get single order details
-    app.get('/getOrder/:id',async(req,res)=>{
+    app.get('/getOrder/:id',verifyJWT,async(req,res)=>{
         const id = req.params.id;
         // console.log(id)
         const query = {_id: ObjectId(id)};
