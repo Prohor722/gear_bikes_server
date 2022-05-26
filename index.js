@@ -113,7 +113,7 @@ async function run() {
     });
 
     //delete a product 
-    app.delete('/product/:id',async(req,res)=>{
+    app.delete('/product/:id',verifyJWT, verifyAdmin, async(req,res)=>{
         const id = req.params.id;
         console.log(id);
         const query = {_id: ObjectId(id)};
@@ -229,6 +229,20 @@ async function run() {
         }
 
         const result = await orderCollection.updateOne(query, updatedDoc);
+        res.send(result);
+    })
+
+    //update order status to shipped
+    app.patch('/orderShipped/:id',verifyJWT, verifyAdmin, async(req,res)=>{
+        const id = req.params.id;
+        console.log(id);
+        const filter = {_id: ObjectId(id)};
+        const updateStatus = {
+            $set:{
+                status: 'shipped'
+            }
+        }
+        const result = await orderCollection.updateOne(filter,updateStatus);
         res.send(result);
     })
 
