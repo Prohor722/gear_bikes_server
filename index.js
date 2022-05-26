@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const jwt = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
@@ -35,8 +36,6 @@ const client = new MongoClient(uri, {
   serverApi: ServerApiVersion.v1,
 });
 
-// console.log(process.env.USER_NAME);
-
 async function run() {
   try {
     await client.connect();
@@ -61,6 +60,17 @@ async function run() {
         }
     };
 
+    //payment intent
+    app.post('/create-payment-intent',async(req,res)=>{
+        const {price} = req.body;
+        const amount = price*100;
+        const paymentIntent = await stripe.paymentIntents.create({
+            amount: amount,
+            currency: 'usd',
+            payment_method_types: ['card'],
+        });
+        res.send({clientSecret: paymentIntent.client_secret,});
+    });
 
     //get latest home page products
     app.get("/latestProducts", async (req, res) => {
@@ -98,7 +108,6 @@ async function run() {
     app.post('/addProduct',verifyJWT,verifyAdmin, async(req,res)=>{
         const product = req.body;
         const token = req.headers.authorization;
-        console.log(token);
         const result = await productsCollection.insertOne(product);
         res.send(result);
     });
@@ -199,6 +208,21 @@ async function run() {
       res.send(result);
     });
 
+    //update order after payment
+    app.patch('/order/paid', verifyJWT,async(req,res)=>{
+        const order = req.body;
+        const query = {_id: ObjectId(order.id)};
+        const updatedDoc ={
+            $set:{
+                status: 'paid',
+                transactionId: order.transactionId
+            }
+        }
+
+        const result = await orderCollection.updateOne(query, updatedDoc);
+        res.send(result);
+    })
+
     //get orders for user
     app.get("/orders/:email",verifyJWT, async (req, res) => {
       const email = req.params.email;
@@ -206,6 +230,15 @@ async function run() {
       const orders = await orderCollection.find(query).toArray();
       res.send(orders);
     });
+
+    //get single order details
+    app.get('/getOrder/:id',async(req,res)=>{
+        const id = req.params.id;
+        // console.log(id)
+        const query = {_id: ObjectId(id)};
+        const order = await orderCollection.findOne(query);
+        res.send(order);
+    })
 
     //delete order
     app.delete('/order/:id',verifyJWT, async(req,res)=>{
