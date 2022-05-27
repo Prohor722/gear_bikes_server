@@ -133,9 +133,17 @@ async function run() {
 
     //get all reviews
     app.get("/reviews", async (req, res) => {
-      const reviews = await reviewsCollection.find().toArray();
+      const page = req.query.page;
+      const skipData = parseInt(page)*12;
+      const reviews = await reviewsCollection.find().skip(skipData).limit(12).toArray();
       res.send(reviews);
     });
+
+    //reviews quantity
+    app.get('/reviewCount', async(req,res)=>{
+        const count = await reviewsCollection.estimatedDocumentCount();
+        res.send({count});
+    })
 
     //get review user info api
     app.get('/reviewUserInfo/:email',async(req,res)=>{
@@ -319,6 +327,14 @@ async function run() {
         // console.log(isAdmin)
         res.send({ admin: isAdmin })
     });
+
+    //products pagination
+    app.get('/productCount', async(req,res)=>{
+        const query = {};
+        const cursor = productsCollection.find(query);
+        const count = await cursor.count();
+        res.send({count});
+    })
   } finally {
   }
 }
