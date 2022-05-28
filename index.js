@@ -85,16 +85,21 @@ async function run() {
     //get all products
     app.get("/products", async (req, res) => {
       const search = req.query.search;
+      const page = req.query.page;
+      const skippedData = parseInt(page)*12;
+      let count;
       let products;
       if (search) {
-        const query = { name: { $regex: search } };
-
-        products = await productsCollection.find(query).toArray();
+        const query = { name: { $regex : new RegExp(search, "i") } };
+        products = await productsCollection.find(query).skip(skippedData).limit(12).toArray();
+        count = await productsCollection.find(query).count();
       } else {
-        products = await productsCollection.find().toArray();
+        products = await productsCollection.find().skip(skippedData).limit(12).toArray();
+        count = await productsCollection.estimatedDocumentCount();
       }
-      res.send(products);
+      res.send({products,count});
     });
+
 
     //get single products
     app.get("/product/:id",verifyJWT, async (req, res) => {
@@ -328,13 +333,11 @@ async function run() {
         res.send({ admin: isAdmin })
     });
 
-    //products pagination
-    app.get('/productCount', async(req,res)=>{
-        const query = {};
-        const cursor = productsCollection.find(query);
-        const count = await cursor.count();
-        res.send({count});
+    app.get('/test', (req,res)=>{
+      res.send("Testing route");
     })
+
+    
   } finally {
   }
 }
