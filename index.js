@@ -20,7 +20,7 @@ function verifyJWT(req, res, next) {
   const token = authHeader.split(" ")[1];
   //   console.log(token);
 
-  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+  jwt.verify(token, 'token', function (err, decoded) {
     if (err) {
       return res.status(403).send({ message: "Forbidden Access." });
     }
@@ -29,7 +29,7 @@ function verifyJWT(req, res, next) {
   });
 }
 
-const uri = `mongodb+srv://${process.env.USER_NAME}:${process.env.USER_PASS}@cluster0.rk7zy.mongodb.net/?retryWrites=true&w=majority`;
+const uri = `mongodb+srv://papai:V3r2qEIjWcrFFZLi@cluster0.rk7zy.mongodb.net/?retryWrites=true&w=majority`;
 const client = new MongoClient(uri, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
@@ -176,7 +176,7 @@ async function run() {
       const userExists = await usersCollection.findOne(filter);
       if (userExists) {
         //   console.log(userExists)
-        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+        const token = jwt.sign({ email }, 'token', {
           expiresIn: "3h",
         });
         res.send({ token });
@@ -190,7 +190,7 @@ async function run() {
         };
         //   console.log(doc);
         const result = await usersCollection.updateOne(filter, doc, options);
-        const token = jwt.sign({ email }, process.env.ACCESS_TOKEN_SECRET, {
+        const token = jwt.sign({ email }, 'token', {
           expiresIn: "3h",
         });
         res.send({ result, token });
